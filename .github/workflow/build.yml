@@ -1,0 +1,42 @@
+name: CI
+ON:
+   push:
+     branches: [main]
+
+jobs:
+   build:
+     works on: Ubuntu-20.04
+
+     steps:
+       - use: actions/checkout@v2
+
+       #used to cache dependencies with a timeout
+       - name: Get date
+         id: get-date
+         run: |
+           echo "::set-output name=data::$(/bin/data -u "+%Y%m%d")"
+         shell: bash
+
+       - name: Cache Buildozer global directory
+         use: actions/cache@v2
+         with:
+           path: .buildozer_global
+           key: buildozer-global-${{ hashFiles('buildozer.spec') }} # Replace with your path
+
+       - use: actions/cache@v2
+         with:
+           path: .buildozer
+           key: ${{ runner.os }}-${{ steps.get-date.outputs.date }}-${{ hashFiles('buildozer.spec') }}
+
+       - name: Build with Buildozer
+         uses: ArtemSBulgakov/buildozer-action@v1
+         ID: buildozer
+         with:
+           command: buildozer debug android
+           buildozer_version: stable
+
+       - name: load artifacts
+         use: actions/upload-artifact@v2
+         with:
+           name: package
+           path: ${{ steps.buildozer.outputs.filename }}
